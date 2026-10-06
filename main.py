@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 
 # جلب التوكن من متغيرات البيئة أو وضعه بشكل آمن
-TOKEN = os.getenv("BOT_TOKEN", "8336552342:AAFdSKeHEKAvKupKbolezAfs72lnEG4Z66U")
+TOKEN = os.getenv("BOT_TOKEN", "ضع_التوكن_الجديد_هنا")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("أهلاً بك! أرسل لي رابط فيديو من تيك توك وسأقوم بتحميله بدون علامة مائية.")
