@@ -1,14 +1,17 @@
+import os
 import logging
-import requests
+import httpx
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
+# إعداد السجلات
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-TOKEN = '8336552342:AAFdSKeHEKAvKupKbolezAfs72lnEG4Z66U'
+# جلب التوكن من متغيرات البيئة أو وضعه بشكل آمن
+TOKEN = os.getenv("BOT_TOKEN", "8336552342:AAFdSKeHEKAvKupKbolezAfs72lnEG4Z66U")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("أهلاً بك! أرسل لي رابط فيديو من تيك توك وسأقوم بتحميله بدون علامة مائية.")
@@ -23,19 +26,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("جاري جلب الفيديو...")
 
     try:
-        # 1. تتبع الرابط إذا كان مختصراً لفك التوجيه (Redirect)
-        session = requests.Session()
-        res = session.get(url, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
-        final_url = res.url
+        # استخدام httpx لطلبات غير متزامنة بالكامل (Non-blocking)
+        async with httpx.AsyncClient(follow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'}) as client:
+            # 1. تتبع الرابط لفك التوجيه
+            res = await client.get(url)
+            final_url = str(res.url)
 
-        # 2. استخدام API جديد ومستقر (TikWM API)
-        api_url = "https://www.tikwm.com/api/"
-        response = requests.post(api_url, data={'url': final_url}).json()
+            # 2. طلب API من TikWM
+            api_url = "https://www.tikwm.com/api/"
+            api_res = await client.post(api_url, data={'url': final_url})
+            response = api_res.json()
 
         if response.get('code') == 0:
-            # رابط الفيديو بدون علامة مائية
             video_url = response['data']['play']
-            # للتعامل مع الروابط النسبية
             if not video_url.startswith("http"):
                 video_url = "https://www.tikwm.com" + video_url
 
