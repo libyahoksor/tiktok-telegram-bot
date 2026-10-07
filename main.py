@@ -10,7 +10,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-TOKEN = os.getenv("BOT_TOKEN", "8916408881:AAHWVFjn5tLjJ4odlAnGpXS3AeD545JtRMA")
+TOKEN = os.getenv("BOT_TOKEN", "8231546949:AAFxw-Bbj2ykgguD-BeR21YWAD22Hlu88Jw")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("أهلاً بك! أرسل لي رابط فيديو من تيك توك وسأقوم بتحميله بدون علامة مائية.")
