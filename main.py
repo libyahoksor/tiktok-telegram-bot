@@ -10,7 +10,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-TOKEN = os.getenv("8231546949:AAFxw-Bbj2ykgguD-BeR21YWAD22Hlu88Jw")
+TOKEN = os.getenv("8937294006:AAEcv9o2a2fT2lxCsOyEIyMlPyGwfFD9Grc")
 
 # مجموعة لتخزين معرّفات المستخدمين الفريدين (In-Memory Tracking)
 users_db = set()
