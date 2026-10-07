@@ -10,9 +10,10 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+# قراءة اسم المتغير BOT_TOKEN المسجل في Railway
 TOKEN = os.getenv("8937294006:AAEcv9o2a2fT2lxCsOyEIyMlPyGwfFD9Grc")
 
-# مجموعة لتخزين معرّفات المستخدمين الفريدين (In-Memory Tracking)
+# مجموعة لتخزين معرّفات المستخدمين الفريدين
 users_db = set()
 
 def save_user(user_id: int):
@@ -61,14 +62,11 @@ async def download_generic(url: str, client: httpx.AsyncClient):
         "Content-Type": "application/json"
     }
     
-    # استخدام سيرفر عمومي متوافق مع API
     api_res = await client.post("https://api.cobalt.tools/api/json", json=payload, headers=headers)
     
     if api_res.status_code == 200:
         data = api_res.json()
-        if data.get("status") == "stream" or data.get("status") == "picker":
-            return data.get("url")
-        elif data.get("status") == "redirect":
+        if data.get("status") in ["stream", "picker", "redirect"]:
             return data.get("url")
     return None
 
@@ -85,7 +83,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await users_count(update, context)
         return
 
-    # فحص توافق الرابط مع المنصات
     platforms = ["tiktok.com", "instagram.com", "facebook.com", "fb.watch", "twitter.com", "x.com"]
     if not any(p in text for p in platforms):
         await update.message.reply_text("الرجاء إرسال رابط صحيح من (تيك توك، انستقرام، فيسبوك، أو تويتر).")
@@ -99,12 +96,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=30.0) as client:
-            video_url = None
-
-            # 1. التوجيه لـ TikTok API
             if "tiktok.com" in text:
                 video_url = await download_tiktok(text, client)
-            # 2. التوجيه لباقي المنصات (Instagram / Facebook / Twitter)
             else:
                 video_url = await download_generic(text, client)
 
@@ -119,6 +112,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text("حدث خطأ أثناء معالجة الفيديو. حاول مجدداً لاحقاً.")
 
 if __name__ == '__main__':
+    if not TOKEN:
+        raise ValueError("لم يتم العثور على المتغير BOT_TOKEN! تأكد من إضافته في قسم Variables داخل Railway.")
+        
     app = ApplicationBuilder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -126,4 +122,4 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
     
     print("البوت يعمل الآن...")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
