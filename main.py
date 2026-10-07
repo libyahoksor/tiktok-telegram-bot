@@ -10,14 +10,12 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# قراءة اسم المتغير BOT_TOKEN المسجل في Railway
 TOKEN = os.getenv("8937294006:AAEcv9o2a2fT2lxCsOyEIyMlPyGwfFD9Grc")
 
 # مجموعة لتخزين معرّفات المستخدمين الفريدين
 users_db = set()
 
 def save_user(user_id: int):
-    """حفظ معرّف المستخدم حسابياً"""
     users_db.add(user_id)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -35,39 +33,48 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg)
 
 async def users_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """أمر لمعرفة عدد مستخدمي البوت"""
     count = len(users_db)
     await update.message.reply_text(f"📊 **إحصائيات البوت:**\nعدد المستخدمين الكلي: {count}")
 
 async def download_tiktok(url: str, client: httpx.AsyncClient):
     """جلب فيديو تيك توك عبر TikWM API"""
-    api_res = await client.post("https://www.tikwm.com/api/", data={'url': url, 'hd': 1})
-    res_data = api_res.json()
-    if res_data.get('code') == 0 and 'data' in res_data:
-        video_url = res_data['data'].get('play') or res_data['data'].get('wmplay')
-        if video_url and not video_url.startswith("http"):
-            video_url = "https://www.tikwm.com" + video_url
-        return video_url
+    try:
+        api_res = await client.post("https://www.tikwm.com/api/", data={'url': url, 'hd': 1})
+        res_data = api_res.json()
+        if res_data.get('code') == 0 and 'data' in res_data:
+            video_url = res_data['data'].get('play') or res_data['data'].get('wmplay')
+            if video_url and not video_url.startswith("http"):
+                video_url = "https://www.tikwm.com" + video_url
+            return video_url
+    except Exception as e:
+        logging.error(f"TikTok API error: {e}")
     return None
 
 async def download_generic(url: str, client: httpx.AsyncClient):
-    """جلب الفيديوهات عبر Cobalt API (يدعم الانستقرام، الفيسبوك، وتويتر)"""
-    payload = {
-        "url": url,
-        "videoQuality": "720",
-        "downloadMode": "auto"
-    }
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-    }
-    
-    api_res = await client.post("https://api.cobalt.tools/api/json", json=payload, headers=headers)
-    
-    if api_res.status_code == 200:
-        data = api_res.json()
-        if data.get("status") in ["stream", "picker", "redirect"]:
-            return data.get("url")
+    """جلب الفيديوهات (انستغرام، فيسبوك، تويتر) عبر محرك جلب الميديا المباشر"""
+    try:
+        # المحرك المباشر لجلب الوسائط المتعددة
+        api_url = f"https://api.vkrdown.com/api/item?url={url}"
+        res = await client.get(api_url)
+        data = res.json()
+        
+        # البحث عن رابط فيديو صالح
+        if data.get("status") == 200 or data.get("status") == "success" or "data" in data:
+            data_obj = data.get("data") or data
+            
+            # جلب مصفوفة التنزيلات
+            downloads = data_obj.get("downloads") or data_obj.get("video") or []
+            if isinstance(downloads, list) and len(downloads) > 0:
+                return downloads[0].get("url")
+            elif isinstance(downloads, str) and downloads.startswith("http"):
+                return downloads
+            
+            # فحص إضافي لروابط الفيديو المباشرة
+            url_res = data_obj.get("url") or data_obj.get("main_url")
+            if url_res and isinstance(url_res, str) and url_res.startswith("http"):
+                return url_res
+    except Exception as e:
+        logging.error(f"Generic Downloader API Error: {e}")
     return None
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -95,7 +102,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
 
-        async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=30.0) as client:
+        async with httpx.AsyncClient(follow_redirects=True, headers=headers, timeout=35.0) as client:
             if "tiktok.com" in text:
                 video_url = await download_tiktok(text, client)
             else:
@@ -108,12 +115,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.edit_text("تعذر جلب الفيديو، تأكد من أن الرابط صحيح وأن الحساب عام وليس خاصاً.")
 
     except Exception as e:
-        logging.error(f"Error downloading video: {e}")
+        logging.error(f"Error handling request: {e}")
         await msg.edit_text("حدث خطأ أثناء معالجة الفيديو. حاول مجدداً لاحقاً.")
 
 if __name__ == '__main__':
     if not TOKEN:
-        raise ValueError("لم يتم العثور على المتغير BOT_TOKEN! تأكد من إضافته في قسم Variables داخل Railway.")
+        raise ValueError("لم يتم العثور على المتغير BOT_TOKEN! تأكد من وجوده في قسم Variables داخل Railway.")
         
     app = ApplicationBuilder().token(TOKEN).build()
     
